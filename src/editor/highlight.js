@@ -23,8 +23,15 @@ const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&
 
 const TOKEN = /(--[^\n]*)|(\/\*[\s\S]*?(?:\*\/|$))|(N?'(?:[^']|'')*(?:'|$))|(\[[^\]\n]*\]?)|(@@?\w+)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][\w$#]*)/g
 
-export function highlight(text) {
+/**
+ * Возвращает HTML, где каждая строка — отдельный блок .hl-ln.
+ * Строка с ошибкой получает класс err: подсветка живёт внутри текста,
+ * поэтому всегда совпадает со строкой и прокручивается вместе с ней.
+ */
+export function highlight(text, errorLine = null) {
   let out = '', last = 0, m
+  // токен может занимать несколько строк (комментарий /* */) — span на каждую строку
+  const wrap = (cls, t) => t.split('\n').map(x => (x ? `<span class="${cls}">${esc(x)}</span>` : '')).join('\n')
   TOKEN.lastIndex = 0
   while ((m = TOKEN.exec(text))) {
     if (m.index > last) out += esc(text.slice(last, m.index))
@@ -44,11 +51,12 @@ export function highlight(text) {
       else if (KEYWORDS.has(u)) cls = 'hl-k'
       else if (FUNCS.has(u)) cls = 'hl-f'
     }
-    out += cls ? `<span class="${cls}">${esc(t)}</span>` : esc(t)
+    out += cls ? wrap(cls, t) : esc(t)
     last = TOKEN.lastIndex
     if (t === '') TOKEN.lastIndex++
   }
   out += esc(text.slice(last))
-  // у <pre> последняя пустая строка схлопывается — добавляем пробел
-  return out + (text.endsWith('\n') || !text ? ' ' : '')
+  return out.split('\n')
+    .map((line, i) => `<div class="hl-ln${i === errorLine ? ' err' : ''}">${line || ' '}</div>`)
+    .join('')
 }

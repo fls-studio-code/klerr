@@ -60,6 +60,48 @@ const text = ref('')
 const sideOpen = ref(false)
 const editor = ref(null)
 const tick = ref(0)
+const mainEl = ref(null)
+
+/* ---------- разделитель редактора и результатов ---------- */
+const LS_SPLIT = 'klerr_split'
+const split = ref(readSplit())
+const dragging = ref(false)
+
+function readSplit() {
+  try { const v = parseFloat(localStorage.getItem(LS_SPLIT)); return v > 0 && v < 1 ? v : null } catch (e) { return null }
+}
+function saveSplit() {
+  try { if (split.value === null) localStorage.removeItem(LS_SPLIT); else localStorage.setItem(LS_SPLIT, String(split.value)) } catch (e) { /* хранилище недоступно */ }
+}
+function setSplitFromY(y) {
+  const m = mainEl.value
+  if (!m) return
+  const r = m.getBoundingClientRect()
+  const min = 90, max = r.height - 110
+  split.value = Math.min(max, Math.max(min, y - r.top)) / r.height
+}
+function startSplit(e) {
+  if (e.button !== undefined && e.button !== 0) return
+  e.preventDefault()
+  dragging.value = true
+  e.currentTarget.setPointerCapture(e.pointerId)
+}
+function moveSplit(e) { if (dragging.value) setSplitFromY(e.clientY) }
+function endSplit() {
+  if (!dragging.value) return
+  dragging.value = false
+  saveSplit()
+}
+function keySplit(e) {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+  e.preventDefault()
+  const m = mainEl.value
+  const r = m.getBoundingClientRect()
+  const cur = (split.value ?? 0.4) * r.height + r.top
+  setSplitFromY(cur + (e.key === 'ArrowUp' ? -24 : 24))
+  saveSplit()
+}
+function resetSplit() { split.value = null; saveSplit() }
 
 function sync() {
   tick.value++
@@ -215,7 +257,7 @@ onMounted(async () => {
         @close="sideOpen = false"
       />
 
-      <main>
+      <main ref="mainEl" :class="{ resizing: dragging }" :style="split !== null ? { '--ed-h': (split * 100).toFixed(2) + '%' } : null">
         <section class="editor-wrap">
           <SnippetBar :snippets="SNIPPETS" @insert="insertAtCursor" />
           <SqlEditor
@@ -227,6 +269,21 @@ onMounted(async () => {
             @run="run"
           />
         </section>
+
+        <div
+          class="splitter"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Размер редактора и результатов"
+          tabindex="0"
+          title="Потяни, чтобы изменить размер. Двойной клик — по умолчанию"
+          @pointerdown="startSplit"
+          @pointermove="moveSplit"
+          @pointerup="endSplit"
+          @pointercancel="endSplit"
+          @dblclick="resetSplit"
+          @keydown="keySplit"
+        ></div>
 
         <nav class="tabs">
           <button class="tab" :class="{ active: activeTab === 'results' }" @click="activeTab = 'results'">

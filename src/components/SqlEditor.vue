@@ -13,11 +13,10 @@ const emit = defineEmits(['update:modelValue', 'run'])
 const ta = ref(null)
 const pre = ref(null)
 const gutter = ref(null)
-const scrollTop = ref(0)
 const lineH = ref(22.5)
 const padTop = ref(12)
 
-const html = computed(() => highlight(props.modelValue))
+const html = computed(() => highlight(props.modelValue, props.errorLine))
 const lineCount = computed(() => props.modelValue.split('\n').length)
 const numbers = computed(() => Array.from({ length: lineCount.value }, (_, i) => i + 1))
 
@@ -32,12 +31,9 @@ function measure() {
 function onScroll() {
   const el = ta.value
   if (!el) return
-  scrollTop.value = el.scrollTop
   if (pre.value) { pre.value.scrollTop = el.scrollTop; pre.value.scrollLeft = el.scrollLeft }
   if (gutter.value) gutter.value.scrollTop = el.scrollTop
 }
-
-const bandTop = computed(() => padTop.value + (props.errorLine || 0) * lineH.value - scrollTop.value)
 
 function emitValue() {
   emit('update:modelValue', ta.value.value)
@@ -115,6 +111,7 @@ function selection() {
 function gotoLine(line) {
   const el = ta.value
   if (!el) return
+  measure()
   const lines = el.value.split('\n')
   const n = Math.max(0, Math.min(line, lines.length - 1))
   let a = 0
@@ -150,7 +147,6 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
       <div class="ed-ln-pad"></div>
     </div>
     <div class="ed-code">
-      <div v-if="errorLine !== null" class="ed-band" :style="{ top: bandTop + 'px', height: lineH + 'px' }"></div>
       <pre ref="pre" class="ed-hl" aria-hidden="true"><code v-html="html"></code></pre>
       <textarea
         id="editor"

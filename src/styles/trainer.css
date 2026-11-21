@@ -83,8 +83,13 @@ aside{background:var(--panel);border-right:1px solid var(--line);display:flex;fl
 .tree-icon{width:14px;height:14px;flex:none;stroke:var(--muted)}
 .tree-icon.on{stroke:var(--accent)}
 
-main{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(150px,40%) auto minmax(0,1fr);min-height:0;min-width:0}
-.editor-wrap{display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--line)}
+main{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:var(--ed-h,40%) auto auto minmax(0,1fr);min-height:0;min-width:0}
+main.resizing{cursor:row-resize;user-select:none}
+.splitter{position:relative;height:7px;margin:-3px 0;z-index:5;cursor:row-resize;touch-action:none;background:transparent}
+.splitter::after{content:"";position:absolute;left:50%;top:2px;width:44px;height:3px;margin-left:-22px;border-radius:2px;background:var(--line);transition:background .15s}
+.splitter:hover::after,.splitter:focus-visible::after,main.resizing .splitter::after{background:var(--accent)}
+.splitter:focus-visible{outline:none}
+.editor-wrap{display:flex;flex-direction:column;min-height:0;overflow:hidden;border-bottom:1px solid var(--line)}
 .snips{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
 .snips::-webkit-scrollbar{display:none}
 .snips button{flex:0 0 auto;min-height:32px;padding:4px 10px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px}
@@ -95,11 +100,12 @@ main{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(
 .ed-ln{padding:0 10px 0 12px;font-variant-numeric:tabular-nums}
 .ed-ln.err{color:#fff;background:rgba(255,107,107,.35)}
 .ed-ln-pad{height:40px}
-.ed-code{position:relative;min-width:0;min-height:0}
+.ed-code{position:relative;min-width:0;min-height:0;overflow:hidden}
 .ed-hl,#editor{position:absolute;inset:0;margin:0;padding:12px;font:var(--ed-font);tab-size:2;white-space:pre;overflow:auto;border:0;letter-spacing:normal;word-spacing:normal}
-.ed-hl{overflow:hidden;color:var(--text);pointer-events:none}
-.ed-hl code{font:inherit}
-.ed-band{position:absolute;left:0;right:0;background:rgba(255,107,107,.13);border-left:2px solid var(--err);pointer-events:none}
+.ed-hl{overflow:hidden;color:var(--text);pointer-events:none;padding-bottom:60px}
+.ed-hl code{display:block;width:max-content;min-width:100%;font:inherit}
+.hl-ln{min-height:1lh}
+.hl-ln.err{background:rgba(255,107,107,.14);box-shadow:inset 2px 0 0 var(--err)}
 #editor{width:100%;height:100%;resize:none;outline:none;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:var(--accent-hi)}
 #editor::placeholder{color:var(--muted);-webkit-text-fill-color:var(--muted)}
 #editor::selection{background:rgba(47,157,120,.38)}
@@ -161,7 +167,9 @@ tr:nth-child(even) td:not(.rn){background:rgba(255,255,255,.02)}
   .ed-gutter{min-width:34px}
   .ed-ln{padding:0 6px 0 8px}
   select{max-width:38vw}
-  main{grid-template-rows:minmax(150px,36%) auto minmax(0,1fr)}
+  main{grid-template-rows:var(--ed-h,36%) auto auto minmax(0,1fr)}
+  .splitter{height:14px;margin:-7px 0}
+  .splitter::after{top:5px;width:56px;margin-left:-28px;height:4px}
   th,td{padding:7px 10px}
   summary{min-height:42px}
   .tree-node{min-height:42px}
