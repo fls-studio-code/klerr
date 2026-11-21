@@ -34,7 +34,7 @@ const games = [
         <section class="lead-col">
           <div class="lockup">
             <span class="mark" aria-hidden="true"><KlerrMark /></span>
-            <h1 class="wordmark">Klerr<span class="caret" aria-hidden="true"></span></h1>
+            <h1 class="wordmark" aria-label="klerr.dev">Klerr<span class="tld">.dev</span><span class="caret" aria-hidden="true"></span></h1>
           </div>
 
           <p class="tagline">SQL <span>·</span> Training Studio</p>
@@ -108,8 +108,8 @@ const games = [
                 </svg>
               </span>
               <span class="feat-text">
-                <span class="feat-name">T-SQL → SQLite</span>
-                <span class="feat-desc">TOP, IDENTITY, GO-батчи</span>
+                <span class="feat-name">Синтаксис SQL Server</span>
+                <span class="feat-desc">ключи, типы, ошибки как в SSMS</span>
               </span>
             </li>
             <li class="feat">
@@ -160,7 +160,7 @@ const games = [
       </section>
 
       <footer class="foot">
-        <span>Klerr</span>
+        <span>klerr.dev</span>
         <span>SQL Trainer</span>
       </footer>
     </main>

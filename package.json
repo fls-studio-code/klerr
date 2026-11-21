@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "node scripts/prepare-public.mjs && vite build && node scripts/postbuild.mjs",
     "preview": "vite preview",
-    "verify:engine": "node scripts/verify-engine.mjs"
+    "test": "node scripts/test-lessons.mjs"
   },
   "dependencies": {
     "sql.js": "^1.17.0",

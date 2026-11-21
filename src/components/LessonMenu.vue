@@ -1,7 +1,7 @@
 <script setup>
 import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
-defineProps({
+const props = defineProps({
   lessons: { type: Array, default: () => [] },
 })
 
@@ -10,6 +10,15 @@ const emit = defineEmits(['pick'])
 const open = ref(false)
 const btnEl = ref(null)
 const popEl = ref(null)
+
+/** «3.5 Students: SELECT, DISTINCT, TOP» по id примера */
+function label(id) {
+  for (const l of props.lessons) {
+    const i = l.items.findIndex(x => x.id === id)
+    if (i >= 0) return `${l.lesson}.${i + 1} ${l.items[i].title}`
+  }
+  return id
+}
 
 function toggle() {
   open.value = !open.value
@@ -26,12 +35,14 @@ function place() {
   const b = btnEl.value
   const p = popEl.value
   if (!b || !p) return
-  const w = Math.min(340, window.innerWidth - 24)
+  const w = Math.min(380, window.innerWidth - 24)
+  const r = b.getBoundingClientRect()
   p.style.width = w + 'px'
-  let left = b.getBoundingClientRect().right - w
+  let left = r.right - w
   left = Math.max(12, Math.min(left, window.innerWidth - w - 12))
   p.style.left = left + 'px'
-  p.style.top = (b.getBoundingClientRect().bottom + 6) + 'px'
+  p.style.top = (r.bottom + 6) + 'px'
+  p.style.maxHeight = Math.max(200, window.innerHeight - r.bottom - 18) + 'px'
 }
 
 function pick(id) {
@@ -84,17 +95,20 @@ onBeforeUnmount(() => {
     </button>
 
     <div v-if="open" ref="popEl" class="menu-pop" role="menu">
-      <button
-        v-for="l in lessons"
-        :key="l.id"
-        class="menu-item"
-        role="menuitem"
-        @click="pick(l.id)"
-      >
-        <span class="mi-title">{{ l.title }}</span>
-        <span class="mi-hint">{{ l.hint }}</span>
-        <span v-if="l.needs" class="mi-needs">нужен урок «{{ l.needs }}»</span>
-      </button>
+      <template v-for="l in lessons" :key="l.lesson">
+        <div class="menu-group">{{ l.title }}</div>
+        <button
+          v-for="(item, i) in l.items"
+          :key="item.id"
+          class="menu-item"
+          role="menuitem"
+          @click="pick(item.id)"
+        >
+          <span class="mi-title"><span class="mi-num">{{ l.lesson }}.{{ i + 1 }}</span>{{ item.title }}</span>
+          <span class="mi-hint">{{ item.hint }}</span>
+          <span v-if="item.needs" class="mi-needs">сначала выполни «{{ label(item.needs) }}»</span>
+        </button>
+      </template>
     </div>
   </div>
 </template>

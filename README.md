@@ -7,7 +7,7 @@
 | Маршрут | Что открывает |
 |---|---|
 | `/` | Лендинг: логотип, кнопка SQL-Trainer, блок Roblox-игр |
-| `/sql-trainer` | Тренажёр: редактор, Object Explorer, трансляция T-SQL → SQLite |
+| `/sql-trainer` | Тренажёр: редактор с подсветкой, Object Explorer, примеры к урокам 1–4, синтаксис SQL Server поверх SQLite |
 | `/sql-trainer.html` | Старый адрес — редиректится на `/sql-trainer` |
 
 ---
@@ -41,7 +41,7 @@ npm install
 npm run dev            # локальный сервер разработки (Vite)
 npm run build          # prepare-public → vite build → postbuild
 npm run preview        # предпросмотр собранного dist/ на :4173
-npm run verify:engine  # контроль: T-SQL-движок не изменился
+npm test               # прогон всех примеров уроков через движок
 ```
 
 `npm run build` делает три вещи:
@@ -53,7 +53,7 @@ npm run verify:engine  # контроль: T-SQL-движок не измени�
 ## Деплой
 
 Push в ветку `main` запускает `.github/workflows/deploy.yml`:
-checkout → Node 22 → `npm ci` → `npm run verify:engine` → `npm run build` → upload-pages-artifact → deploy-pages.
+checkout → Node 22 → `npm ci` → `npm test` → `npm run build` → upload-pages-artifact → deploy-pages.
 
 **Один раз вручную** нужно переключить источник Pages:
 
@@ -65,20 +65,29 @@ checkout → Node 22 → `npm ci` → `npm run verify:engine` → `npm run build
 
 ```
 src/
-  engine/tsql.js      движок T-SQL → SQLite (извлечён из legacy без изменений)
-  engine/sqljs.js     локальная загрузка sql.js
-  lessons.js          уроки-примеры для выпадающего меню «Примеры»
-  views/              LandingView.vue, TrainerView.vue
-  components/         KlerrMark, GameCard, TrainerToolbar, LessonMenu, ObjectExplorer, SnippetBar, ResultsTable
-  styles/             base.css, landing.css, trainer.css
-scripts/              prepare-public, postbuild, verify-engine
-legacy/               исходные статичные index.html и sql-trainer.html
+  engine/tsql.js       движок: базы в localStorage, разбор на пакеты/операторы, базовая трансляция T-SQL → SQLite
+  engine/dialect.js    прослойка SQL Server → SQLite (см. ниже)
+  engine/tsqlfuncs.js  функции SQL Server: DATEADD, DATEDIFF, CAST/CONVERT, LIKE '[A-C]%', проверка типов
+  engine/schema.js     разбор CREATE TABLE для ALTER COLUMN / ADD / DROP CONSTRAINT
+  engine/sqlutil.js    утилиты разбора SQL-текста
+  engine/sqljs.js      локальная загрузка sql.js
+  editor/highlight.js  подсветка T-SQL в редакторе
+  lessons.js           примеры к урокам 1–4 для меню «Примеры»
+  views/               LandingView.vue, TrainerView.vue
+  components/          SqlEditor, ObjectExplorer, LessonMenu, ResultsTable, SnippetBar, TrainerToolbar, …
+  styles/              base.css, landing.css, trainer.css
+scripts/               prepare-public, postbuild, test-lessons
 ```
 
-### Контроль движка
+### Прослойка SQL Server → SQLite
 
-`src/engine/tsql.js` содержит трансляцию T-SQL → SQLite, валидацию с номерами ошибок SSMS и выборку данных. Этот код **перенесён побайтово** из `legacy/sql-trainer.html` — переписана только оркестровка (DOM → чистые данные).
+Курс построен на SQL Server и SSMS, а в браузере работает SQLite. `dialect.js` закрывает разницу:
 
-`npm run verify:engine` сверяет четыре блока движка с `legacy/sql-trainer.html` по SHA-256 и роняет сборку при любом расхождении. Шаг запускается и в CI — изменить логику трансляции, не обновив эталон, не получится.
+- схемы и составные имена: `CREATE SCHEMA`, `Person.Person`, `[dbo].[T]`, `[DB].[dbo].[T]`;
+- `CREATE TABLE`: `IDENTITY` в любом месте, `PRIMARY KEY` ⇒ `NOT NULL`, регистронезависимые строки (как collation `*_CI_AS`), проверка внешних ключей (ошибки 1767/1776);
+- проверка типов при `INSERT`/`UPDATE`: `VARCHAR(n)` (2628), `TINYINT`/`SMALLINT`/`INT` (220/8115/245), `DECIMAL(p,s)` с округлением, `DATE`/`DATETIME`/`SMALLDATETIME` с диапазонами (241/242);
+- `ALTER TABLE`: `ALTER COLUMN`, `ADD/DROP CONSTRAINT` (PK, UNIQUE, FK, CHECK, `DEFAULT … FOR`), несколько колонок сразу; `DROP TABLE`/`TRUNCATE` с проверкой внешних ключей;
+- `IF … BEGIN … END ELSE`, `DB_ID`, `OBJECT_ID`, `EXEC sp_rename`, `sp_help`, `SET NOCOUNT`, `SET IDENTITY_INSERT`, `TOP … PERCENT`;
+- сообщения об ошибках с номерами SQL Server, номером строки и подсказкой на русском (например, `LIMIT` → «используй TOP»).
 
-Если `legacy/sql-trainer.html` удалён, проверка печатает предупреждение и завершается с кодом 0 (в CI эталон лежит в репозитории, так что там она всегда выполняется).
+`npm test` выполняет каждый пример из `lessons.js` дважды и сверяет номера ошибок с теми, что пример показывает намеренно.

@@ -86,6 +86,13 @@
   color:transparent;
   animation:riseIn .8s cubic-bezier(.2,.8,.25,1) .08s both;
 }
+/* Домен рядом с логотипом: подсказывает, какой адрес набрать. */
+.wordmark .tld{
+  color:var(--primary);
+  -webkit-text-fill-color:var(--primary);
+  font-weight:600;
+  letter-spacing:-.02em;
+}
 /* Мигающий курсор в вордмарке. Правило намеренно ограничено .wordmark:
    общий класс .caret перебивал стили каретки дропдауна в тренажёре
    (этот CSS грузится на всех маршрутах как часть основного бандла). */
