@@ -4,21 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#161c2b">
-<title>T-SQL Тренажёр</title>
+<meta name="theme-color" content="#14171e">
+<title>Klerr — SQL Trainer</title>
+<meta name="description" content="Klerr — тренажёр T-SQL в браузере: редактор запросов, Object Explorer и проверка синтаксиса как в SSMS.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%231c6b50'/%3E%3Cpath d='M14 9v22M14 20l11-11M14 20l12 11' stroke='%23ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0f1420; --panel:#161c2b; --panel2:#1c2438; --line:#2a3550;
-  --text:#e6ebf5; --muted:#8b97b3; --accent:#4f8cff; --run:#27ae60; --runh:#2ecc71;
-  --err:#ff6b6b; --ok:#3ecf8e; --warn:#f5b942;
+  --bg:#14171e; --panel:#1c2028; --panel2:#242a34; --line:#2f3641;
+  --text:#d7dde6; --muted:#8b93a3; --accent:#2f9d78; --accent-hi:#4fd1a5;
+  --run:#1f7a5c; --runh:#2f9d78;
+  --err:#ff6b6b; --ok:#4fd1a5; --warn:#f5b942;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 "Outfit","Helvetica Neue",system-ui,-apple-system,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
 #app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100vh;height:100dvh}
 
 /* ---------- toolbar ---------- */
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);padding-right:12px;margin-right:4px;border-right:1px solid var(--line);white-space:nowrap}
+.brand:hover{color:#fff}
+.brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.brand-mark{width:26px;height:26px;flex:none;border-radius:8px;background:linear-gradient(140deg,#2f9d78 0%,#175e46 100%);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.brand-mark svg{width:15px;height:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
 .spacer{flex:1}
 button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:38px;touch-action:manipulation}
 button:hover{border-color:var(--accent)}
@@ -62,9 +74,9 @@ main{display:grid;grid-template-rows:minmax(150px,40%) auto minmax(0,1fr);min-he
 .editor-wrap{display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--line)}
 .snips{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
 .snips::-webkit-scrollbar{display:none}
-.snips button{flex:0 0 auto;min-height:32px;padding:4px 10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
-#editor{flex:1;min-height:0;width:100%;resize:none;border:0;outline:none;background:var(--bg);color:var(--text);padding:12px;font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2;caret-color:var(--accent)}
-#editor::selection{background:#2f5fbf}
+.snips button{flex:0 0 auto;min-height:32px;padding:4px 10px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+#editor{flex:1;min-height:0;width:100%;resize:none;border:0;outline:none;background:var(--bg);color:var(--text);padding:12px;font:15px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2;caret-color:var(--accent)}
+#editor::selection{background:rgba(47,157,120,.38)}
 .tabs{display:flex;align-items:center;gap:4px;padding:0 8px;background:var(--panel);border-bottom:1px solid var(--line)}
 .tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:8px 12px;color:var(--muted)}
 .tab.active{color:var(--text);border-bottom-color:var(--accent)}
@@ -84,7 +96,7 @@ tr:nth-child(even) td:not(.rn){background:rgba(255,255,255,.02)}
 .null{color:var(--muted);font-style:italic}
 .num{text-align:right}
 .rs-note{color:var(--muted);font-size:12px;margin:4px 2px}
-.msg{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;margin:0 0 10px}
+.msg{white-space:pre-wrap;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;margin:0 0 10px}
 .msg.err{color:var(--err)}
 .msg.ok{color:var(--text)}
 .msg.dim{color:var(--muted)}
@@ -113,6 +125,16 @@ tr:nth-child(even) td:not(.rn){background:rgba(255,255,255,.02)}
 <div id="app">
   <header class="toolbar">
     <button id="btnTree" class="ghost only-mobile" title="Object Explorer" aria-label="Object Explorer">☰</button>
+    <a class="brand" href="/" title="На главную Klerr" aria-label="Klerr — на главную">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13.5 8v24"/>
+          <path d="M13.5 20 26 8.5"/>
+          <path d="M13.5 20 27 31.5"/>
+        </svg>
+      </span>
+      <span class="brand-name">Klerr</span>
+    </a>
     <button id="btnRun" class="run" disabled>▶ Execute</button>
     <label class="dbsel"><span class="lbl">БД:</span><select id="dbSelect" aria-label="Текущая база данных"></select></label>
     <button class="ghost js-refresh" title="Обновить список баз и таблиц">⟳ <span class="lbl">Refresh</span></button>

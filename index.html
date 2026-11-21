@@ -211,6 +211,27 @@
   }
   .path b{color:var(--primary);font-weight:500}
 
+  /* внешний ресурс — вторичное действие */
+  .cta--ghost{
+    background:rgba(255,255,255,.72);
+    color:var(--ink);
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-s);
+  }
+  .cta--ghost .cta-icon{
+    background:rgba(31,122,92,.08);
+    border-color:rgba(31,122,92,.18);
+  }
+  .cta--ghost .cta-icon svg{stroke:var(--primary-deep)}
+  .cta--ghost .cta-sub{color:var(--muted)}
+  .cta--ghost .cta-arrow svg{stroke:var(--ink-2)}
+  .cta--ghost:hover{
+    transform:translateY(-3px);
+    background:#fff;
+    border-color:rgba(31,122,92,.4);
+    box-shadow:var(--shadow-m);
+  }
+
   /* --- карточка справа --- */
   .panel{
     position:relative;
@@ -261,33 +282,27 @@
   .c{color:#e6ebf2}
   .p{color:rgba(255,255,255,.4)}
 
-  .tracks{
+  .feats{
     position:relative;
     list-style:none;
     margin:0;
     padding:16px 22px 22px;
     border-top:1px solid rgba(255,255,255,.07);
     display:grid;
-    gap:12px;
+    gap:14px;
   }
-  .track{display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:center}
-  .track-name{font-size:13px;color:#c8cfda}
-  .track-val{
-    font-family:"JetBrains Mono",ui-monospace,monospace;
-    font-size:11px;
-    color:rgba(255,255,255,.4);
+  .feat{display:flex;align-items:center;gap:12px}
+  .feat-icon{
+    width:30px;height:30px;flex:none;
+    display:grid;place-items:center;
+    border-radius:9px;
+    background:rgba(47,157,120,.16);
+    border:1px solid rgba(47,157,120,.28);
   }
-  .track-bar{
-    grid-column:1/-1;
-    height:5px;border-radius:99px;
-    background:rgba(255,255,255,.08);
-    overflow:hidden;
-  }
-  .track-bar i{
-    display:block;height:100%;
-    border-radius:99px;
-    background:linear-gradient(90deg,#2f9d78,#63d6a8);
-  }
+  .feat-icon svg{width:15px;height:15px;stroke:#4fd1a5}
+  .feat-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .feat-name{font-size:13.5px;font-weight:500;color:#e6ebf2}
+  .feat-desc{font-size:12px;color:rgba(255,255,255,.45)}
 
   .foot{
     position:relative;z-index:1;
@@ -455,7 +470,7 @@
           </span>
         </a>
         <span class="path">→ <b>/sql-trainer.html</b></span>
-        <a class="cta" href="https://learn.microsoft.com/en-us/sql/samples/adventureworks-install-configure?view=sql-server-ver17&amp;tabs=ssms" target="_blank" rel="noopener noreferrer">
+        <a class="cta cta--ghost" href="https://learn.microsoft.com/en-us/sql/samples/adventureworks-install-configure?view=sql-server-ver17&amp;tabs=ssms" target="_blank" rel="noopener noreferrer">
           <span class="cta-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/>
@@ -468,8 +483,9 @@
           </span>
           <span class="cta-arrow" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14"/>
-              <path d="m12 5 7 7-7 7"/>
+              <path d="M15 3h6v6"/>
+              <path d="M10 14 21 3"/>
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             </svg>
           </span>
         </a>
@@ -487,18 +503,44 @@
  <span class="k">WHERE</span> <span class="c">track</span> = <span class="s">'sql'</span>
 <span class="k">ORDER BY</span> <span class="c">level</span> <span class="k">ASC</span><span class="p">;</span></code></pre>
 
-      <ul class="tracks">
-        <li class="track">
-          <span class="track-name">Основы · SELECT</span><span class="track-val">12 задач</span>
-          <span class="track-bar"><i style="width:82%"></i></span>
+      <ul class="feats">
+        <li class="feat">
+          <span class="feat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m16 18 6-6-6-6"/>
+              <path d="m8 6-6 6 6 6"/>
+            </svg>
+          </span>
+          <span class="feat-text">
+            <span class="feat-name">T-SQL → SQLite</span>
+            <span class="feat-desc">TOP, IDENTITY, GO-батчи</span>
+          </span>
         </li>
-        <li class="track">
-          <span class="track-name">Связи · JOIN</span><span class="track-val">9 задач</span>
-          <span class="track-bar"><i style="width:54%"></i></span>
+        <li class="feat">
+          <span class="feat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2c4.418 0 8 1.343 8 3s-3.582 3-8 3-8-1.343-8-3 3.582-3 8-3Z"/>
+              <path d="M4 5v14c0 1.657 3.582 3 8 3s8-1.343 8-3V5"/>
+              <path d="M4 12c0 1.657 3.582 3 8 3s8-1.343 8-3"/>
+            </svg>
+          </span>
+          <span class="feat-text">
+            <span class="feat-name">Object Explorer</span>
+            <span class="feat-desc">базы, таблицы и колонки</span>
+          </span>
         </li>
-        <li class="track">
-          <span class="track-name">Аналитика · Window</span><span class="track-val">7 задач</span>
-          <span class="track-bar"><i style="width:31%"></i></span>
+        <li class="feat">
+          <span class="feat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/>
+              <line x1="6" x2="6.01" y1="16" y2="16"/>
+              <line x1="10" x2="10.01" y1="16" y2="16"/>
+            </svg>
+          </span>
+          <span class="feat-text">
+            <span class="feat-name">Данные остаются в браузере</span>
+            <span class="feat-desc">локальное хранилище устройства</span>
+          </span>
         </li>
       </ul>
     </aside>
