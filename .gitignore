@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.vite/
+
+# Генерируется scripts/prepare-public.mjs на этапе сборки
+public/vendor/
+public/CNAME

@@ -1,0 +1,138 @@
+/* Тренажёр Klerr — стили перенесены из прежнего sql-trainer.html.
+   Переменные переведены с :root на .trainer-root, чтобы лендинг и тренажёр
+   могли жить в одном документе. */
+
+.trainer-root{
+  --bg:#14171e; --panel:#1c2028; --panel2:#242a34; --line:#2f3641;
+  --text:#d7dde6; --muted:#8b93a3; --accent:#2f9d78; --accent-hi:#4fd1a5;
+  --run:#1f7a5c; --runh:#2f9d78;
+  --err:#ff6b6b; --ok:#4fd1a5; --warn:#f5b942;
+
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  height:100dvh;
+  background:var(--bg);
+  color:var(--text);
+  font:14px/1.45 "Outfit","Helvetica Neue",system-ui,-apple-system,sans-serif;
+  overflow:hidden;
+}
+
+/* ---------- toolbar ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top));background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);padding-right:12px;margin-right:4px;border-right:1px solid var(--line);white-space:nowrap}
+.brand:hover{color:#fff}
+.brand:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.brand-mark{width:26px;height:26px;flex:none;border-radius:8px;background:linear-gradient(140deg,#2f9d78 0%,#175e46 100%);display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.brand-mark svg{width:15px;height:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.spacer{flex:1}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;min-height:38px;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:active{transform:translateY(1px)}
+button.run{background:var(--run);border-color:var(--run);color:#fff;font-weight:600;padding:8px 16px}
+button.run:hover{background:var(--runh)}
+button.run:disabled{opacity:.5;cursor:wait}
+button.ghost{background:transparent}
+button.danger:hover{border-color:var(--err);color:var(--err)}
+button.sm{min-height:30px;padding:3px 9px}
+.dbsel{display:flex;align-items:center;gap:6px;color:var(--muted)}
+select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:38px;max-width:46vw}
+.only-mobile{display:none}
+
+/* ---------- меню уроков ---------- */
+.menu{position:relative;display:inline-flex}
+.menu .mi-label{font-weight:500}
+.menu .caret{width:13px;height:13px;flex:none;opacity:.8;transition:transform .15s ease}
+.menu .caret.up{transform:rotate(180deg)}
+.menu-pop{position:fixed;z-index:60;left:12px;top:64px;width:320px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55);padding:4px;display:grid;gap:2px}
+.menu-item{display:grid;gap:3px;text-align:left;background:transparent;border:0;border-radius:8px;padding:9px 10px;min-height:0}
+.menu-item:hover,.menu-item:focus-visible{background:rgba(47,157,120,.12);border-color:transparent;transform:none}
+.mi-title{font-weight:600;font-size:13.5px;line-height:1.3;color:var(--text)}
+.mi-hint{color:var(--muted);font-size:11.5px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;line-height:1.35;overflow-wrap:anywhere}
+.mi-needs{color:var(--warn);font-size:11.5px;line-height:1.3}
+
+/* ---------- layout ---------- */
+.body{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:0;position:relative}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side-head{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.side-head b{flex:1;font-size:13px;letter-spacing:.3px}
+#tree{overflow:auto;padding:6px 4px;flex:1;min-height:0}
+.hint{margin:0;padding:8px 12px;color:var(--muted);font-size:12px;border-top:1px solid var(--line)}
+.grp{padding:4px 8px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+.tree-node{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;min-height:32px}
+.tree-node:hover{background:var(--panel2)}
+.tree-node.cur .nm{font-weight:700;color:#fff}
+.twisty{flex:none;width:18px;height:18px;min-height:0;padding:0;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.twisty:hover{border:0;color:var(--text)}
+.twisty svg{width:10px;height:10px;transition:transform .15s ease}
+.twisty.open svg{transform:rotate(90deg)}
+.nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kids{margin-left:14px;border-left:1px dashed var(--line);padding-left:6px}
+.kids.cols{margin-left:20px}
+.col{display:flex;justify-content:space-between;gap:8px;padding:2px 8px;color:var(--muted);font-size:13px}
+.col span{color:var(--text)}
+.col i{font-style:normal;font-size:12px}
+.empty{color:var(--muted);padding:4px 10px;font-size:13px}
+.badge{font-size:11px;color:var(--ok);border:1px solid var(--ok);border-radius:10px;padding:0 7px}
+.chip{min-height:24px;padding:0 8px;font-size:11px;border-radius:12px;background:transparent;color:var(--accent);border-color:var(--accent)}
+.tree-icon{width:14px;height:14px;flex:none;stroke:var(--muted)}
+.tree-icon.on{stroke:var(--accent)}
+
+main{display:grid;grid-template-rows:minmax(150px,40%) auto minmax(0,1fr);min-height:0;min-width:0}
+.editor-wrap{display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--line)}
+.snips{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}
+.snips::-webkit-scrollbar{display:none}
+.snips button{flex:0 0 auto;min-height:32px;padding:4px 10px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+#editor{flex:1;min-height:0;width:100%;resize:none;border:0;outline:none;background:var(--bg);color:var(--text);padding:12px;font:15px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2;caret-color:var(--accent)}
+#editor::selection{background:rgba(47,157,120,.38)}
+.tabs{display:flex;align-items:center;gap:4px;padding:0 8px;background:var(--panel);border-bottom:1px solid var(--line)}
+.tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;padding:8px 12px;color:var(--muted)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+#status{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px}
+.panel-out{overflow:auto;min-height:0;background:var(--bg);padding:10px}
+.hidden{display:none}
+
+/* ---------- results ---------- */
+.rs{margin-bottom:16px}
+.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-width:100%}
+table{border-collapse:collapse;width:max-content;min-width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 12px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel2);font-weight:600}
+th:last-child,td:last-child{border-right:0}
+td.rn,th.rn{color:var(--muted);text-align:right;background:var(--panel);width:1%}
+tr:nth-child(even) td:not(.rn){background:rgba(255,255,255,.02)}
+.null{color:var(--muted);font-style:italic}
+.num{text-align:right}
+.bin{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.rs-note{color:var(--muted);font-size:12px;margin:4px 2px}
+.msg{white-space:pre-wrap;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;margin:0 0 10px}
+.msg.err{color:var(--err)}
+.msg.ok{color:var(--text)}
+.msg.dim{color:var(--muted)}
+.placeholder{color:var(--muted);padding:18px 6px}
+
+/* ---------- mobile ---------- */
+#backdrop{display:none}
+@media (max-width:760px){
+  .only-mobile{display:inline-block}
+  .lbl{display:none}
+  .body{grid-template-columns:minmax(0,1fr)}
+  aside{position:fixed;z-index:30;top:0;bottom:0;left:0;width:84%;max-width:330px;transform:translateX(-102%);transition:transform .22s ease;padding-top:env(safe-area-inset-top);box-shadow:6px 0 24px rgba(0,0,0,.5)}
+  aside.open{transform:none}
+  #backdrop.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
+  #editor{font-size:16px}
+  select{max-width:38vw}
+  main{grid-template-rows:minmax(150px,36%) auto minmax(0,1fr)}
+  th,td{padding:7px 10px}
+  summary{min-height:42px}
+  .tree-node{min-height:42px}
+  .chip{min-height:30px}
+  .panel-out{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+}
+
+.load-error{
+  position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  z-index:40;max-width:90vw;
+  background:var(--err);color:#fff;
+  padding:10px 14px;border-radius:10px;font-size:13px;
+}
