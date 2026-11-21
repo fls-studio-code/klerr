@@ -78,7 +78,7 @@ onBeforeUnmount(() => {
       @click="toggle"
     >
       <span class="mi-label">Примеры</span>
-      <svg class="caret" :class="{ up: open }" viewBox="0 0 12 12" aria-hidden="true">
+      <svg class="menu-caret" :class="{ up: open }" viewBox="0 0 12 12" aria-hidden="true">
         <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
     </button>

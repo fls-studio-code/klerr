@@ -86,7 +86,10 @@
   color:transparent;
   animation:riseIn .8s cubic-bezier(.2,.8,.25,1) .08s both;
 }
-.caret{
+/* Мигающий курсор в вордмарке. Правило намеренно ограничено .wordmark:
+   общий класс .caret перебивал стили каретки дропдауна в тренажёре
+   (этот CSS грузится на всех маршрутах как часть основного бандла). */
+.wordmark .caret{
   display:inline-block;
   width:.1em;height:.8em;
   margin-left:.08em;

@@ -42,8 +42,8 @@ select{font:inherit;color:var(--text);background:var(--panel2);border:1px solid 
 /* ---------- меню уроков ---------- */
 .menu{position:relative;display:inline-flex}
 .menu .mi-label{font-weight:500}
-.menu .caret{width:13px;height:13px;flex:none;opacity:.8;transition:transform .15s ease}
-.menu .caret.up{transform:rotate(180deg)}
+.menu .menu-caret{width:13px;height:13px;flex:none;opacity:.8;transition:transform .15s ease}
+.menu .menu-caret.up{transform:rotate(180deg)}
 .menu-pop{position:fixed;z-index:60;left:12px;top:64px;width:320px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55);padding:4px;display:grid;gap:2px}
 .menu-item{display:grid;gap:3px;text-align:left;background:transparent;border:0;border-radius:8px;padding:9px 10px;min-height:0}
 .menu-item:hover,.menu-item:focus-visible{background:rgba(47,157,120,.12);border-color:transparent;transform:none}
