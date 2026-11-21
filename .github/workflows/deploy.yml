@@ -31,9 +31,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Контрольная проверка: движок T-SQL → SQLite обязан остаться нетронутым.
-      - name: Verify T-SQL engine
-        run: npm run verify:engine
+      # Все примеры уроков должны выполняться без неожиданных ошибок.
+      - name: Test lesson examples
+        run: npm test
 
       - name: Build
         run: npm run build

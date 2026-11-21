@@ -8,6 +8,20 @@ defineProps({
 })
 
 const emit = defineEmits(['use', 'select', 'toggle', 'refresh', 'close'])
+
+// Как в SSMS: dbo.Students, Person.Person
+const fullName = n => (n.includes('.') ? n : 'dbo.' + n)
+
+// Как в SSMS: «StudentID (PK, int, not null)»
+function colInfo(c) {
+  const parts = []
+  if (c.pk) parts.push('PK')
+  if (c.fk) parts.push('FK')
+  parts.push(c.type || '?')
+  if (c.identity) parts.push('identity')
+  parts.push(c.nn ? 'not null' : 'null')
+  return parts.join(', ')
+}
 </script>
 
 <template>
@@ -64,14 +78,19 @@ const emit = defineEmits(['use', 'select', 'toggle', 'refresh', 'close'])
                     <path d="M3 10h18M9 10v10" />
                   </template>
                 </svg>
-                <span class="nm">dbo.{{ t.name }}</span>
+                <span class="nm">{{ fullName(t.name) }}</span>
                 <button v-if="name === current" class="chip" @click.stop="emit('select', t.name)">SELECT</button>
               </div>
 
               <div v-if="expanded.has('db:' + name + '/' + t.name)" class="kids cols">
-                <div v-for="c in columnsFor(name, t.name)" :key="c.name" class="col">
-                  <span>{{ c.name }}</span>
-                  <i>{{ c.type || '' }}{{ c.pk ? ' · PK' : '' }}{{ c.nn && !c.pk ? ' · NOT NULL' : '' }}</i>
+                <div
+                  v-for="c in columnsFor(name, t.name)"
+                  :key="c.name"
+                  class="col"
+                  :title="c.fk ? 'FOREIGN KEY → ' + c.fk : ''"
+                >
+                  <span :class="{ key: c.pk, fkey: c.fk && !c.pk }">{{ c.name }}</span>
+                  <i>{{ colInfo(c) }}</i>
                 </div>
               </div>
             </template>
@@ -81,6 +100,6 @@ const emit = defineEmits(['use', 'select', 'toggle', 'refresh', 'close'])
       </template>
     </div>
 
-    <p class="hint">Базы живут в памяти браузера и сохраняются на этом устройстве. Нажми «USE», чтобы переключиться, «SELECT» — чтобы вставить запрос.</p>
+    <p class="hint">Базы живут в браузере и сохраняются на этом устройстве. «USE» — переключиться на базу, «SELECT» — вставить запрос к таблице.</p>
   </aside>
 </template>

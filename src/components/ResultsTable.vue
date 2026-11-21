@@ -1,9 +1,12 @@
 <script setup>
+import { ref } from 'vue'
+
 defineProps({
   sets: { type: Array, default: () => [] },
 })
 
 const MAX_ROWS = 1000
+const copied = ref(-1)
 
 function isBinary(v) {
   return typeof Uint8Array !== 'undefined' && v instanceof Uint8Array
@@ -21,16 +24,34 @@ function cellText(v) {
   if (isBinary(v)) return '0x' + Array.from(v).map(x => x.toString(16).padStart(2, '0')).join('')
   return String(v)
 }
+
+/** Копирует набор как TSV — вставляется в Excel/Google Таблицы по ячейкам. */
+async function copySet(s, i) {
+  const clean = v => cellText(v).replace(/[\t\n\r]+/g, ' ')
+  const tsv = [s.cols.join('\t'), ...s.rows.map(r => r.map(clean).join('\t'))].join('\n')
+  try {
+    await navigator.clipboard.writeText(tsv)
+    copied.value = i
+    setTimeout(() => { if (copied.value === i) copied.value = -1 }, 1500)
+  } catch (e) { /* буфер обмена недоступен */ }
+}
 </script>
 
 <template>
   <div v-for="(s, i) in sets" :key="i" class="rs">
+    <div class="rs-head">
+      <span class="rs-title">Результат {{ i + 1 }}</span>
+      <span class="rs-count">{{ s.rows.length }} {{ s.rows.length % 10 === 1 && s.rows.length % 100 !== 11 ? 'строка' : (s.rows.length % 10 >= 2 && s.rows.length % 10 <= 4 && (s.rows.length % 100 < 10 || s.rows.length % 100 >= 20) ? 'строки' : 'строк') }}</span>
+      <button class="ghost sm rs-copy" :title="'Скопировать как таблицу (TSV)'" @click="copySet(s, i)">
+        {{ copied === i ? 'Скопировано' : 'Копировать' }}
+      </button>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead>
           <tr>
             <th class="rn"></th>
-            <th v-for="c in s.cols" :key="c">{{ c }}</th>
+            <th v-for="(c, ci) in s.cols" :key="ci">{{ c }}</th>
           </tr>
         </thead>
         <tbody>

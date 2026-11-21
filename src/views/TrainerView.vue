@@ -2,17 +2,33 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { createEngine } from '../engine/tsql.js'
 import { loadSqlJs } from '../engine/sqljs.js'
-import { LESSONS } from '../lessons.js'
+import { LESSONS, WELCOME, ALL_EXAMPLES, findExample } from '../lessons.js'
 import '../styles/trainer.css'
 import TrainerToolbar from '../components/TrainerToolbar.vue'
 import ObjectExplorer from '../components/ObjectExplorer.vue'
 import SnippetBar from '../components/SnippetBar.vue'
 import ResultsTable from '../components/ResultsTable.vue'
+import SqlEditor from '../components/SqlEditor.vue'
 
 const SNIPPETS = [
   { label: 'SELECT', insert: 'SELECT * FROM ' },
-  { label: 'INSERT', insert: 'INSERT INTO ' },
-  { label: 'CREATE TABLE', insert: 'CREATE TABLE ' },
+  { label: 'WHERE', insert: 'WHERE ' },
+  { label: 'AND', insert: ' AND ' },
+  { label: 'OR', insert: ' OR ' },
+  { label: 'ORDER BY', insert: 'ORDER BY ' },
+  { label: 'TOP', insert: 'TOP (10) ' },
+  { label: 'DISTINCT', insert: 'DISTINCT ' },
+  { label: 'LIKE', insert: "LIKE '%'" },
+  { label: 'IN', insert: 'IN ()' },
+  { label: 'BETWEEN', insert: 'BETWEEN  AND ' },
+  { label: 'IS NULL', insert: 'IS NULL' },
+  { label: 'INSERT', insert: 'INSERT INTO  () VALUES ();' },
+  { label: 'UPDATE', insert: 'UPDATE  SET  = WHERE ;' },
+  { label: 'DELETE', insert: 'DELETE FROM  WHERE ;' },
+  { label: 'CREATE TABLE', insert: 'CREATE TABLE  (\n  Id INT IDENTITY(1,1) PRIMARY KEY,\n  \n);' },
+  { label: 'ALTER TABLE', insert: 'ALTER TABLE  ADD ' },
+  { label: 'PRIMARY KEY', insert: 'PRIMARY KEY' },
+  { label: 'FOREIGN KEY', insert: 'FOREIGN KEY () REFERENCES ()' },
   { label: 'CREATE DB', insert: 'CREATE DATABASE ' },
   { label: 'USE', insert: 'USE ' },
   { label: 'GO', insert: '\nGO\n' },
@@ -37,11 +53,12 @@ const expanded = ref(new Set())
 const results = ref([])
 const messages = ref([])
 const hadError = ref(false)
+const errorLine = ref(null)
 const activeTab = ref('results')
 const status = ref('Загрузка движка…')
 const text = ref('')
 const sideOpen = ref(false)
-const editorEl = ref(null)
+const editor = ref(null)
 const tick = ref(0)
 
 function sync() {
@@ -53,27 +70,19 @@ function sync() {
   expanded.value = new Set(engine.getOpenKeys())
 }
 
-// Читаем tick.value, чтобы computed зависел от состояния движка
-const tablesFor = (name) => { tick.value; return engine.getTables(name) }
+// Как в SSMS: сначала dbo, потом остальные схемы по алфавиту
+const sortKey = n => (n.includes('.') ? n : 'dbo.' + n).toLowerCase()
+
+// Читаем tick.value, чтобы шаблон перерисовывался после изменений в движке
+const tablesFor = (name) => { tick.value; return engine.getTables(name).sort((a, b) => sortKey(a.name).localeCompare(sortKey(b.name))) }
 const columnsFor = (name, table) => { tick.value; return engine.getColumns(name, table) }
 
 function run() {
   if (!ready.value) return
 
-  const el = editorEl.value
-  let payload = text.value
-  let selectionOnly = false
-
-  if (el) {
-    const a = el.selectionStart
-    const b = el.selectionEnd
-    if (b > a && el.value.slice(a, b).trim()) {
-      payload = el.value.slice(a, b)
-      selectionOnly = true
-    }
-  }
-
-  const res = engine.execute(payload, { selectionOnly })
+  const sel = editor.value ? editor.value.selection() : null
+  const payload = sel ? sel.text : text.value
+  const res = engine.execute(payload, { selectionOnly: !!sel, lineOffset: sel ? sel.line : 0 })
 
   if (res.empty) {
     status.value = 'Нечего выполнять'
@@ -83,27 +92,35 @@ function run() {
   results.value = res.sets
   messages.value = res.log
   hadError.value = res.hadErr
+  errorLine.value = res.hadErr ? res.errLine : null
   activeTab.value = res.hadErr || !res.sets.length ? 'messages' : 'results'
-  status.value = `${res.hadErr ? 'Ошибка' : 'Готово'} · ${res.ms} мс · БД: ${engine.getCurrent()}`
+  const rows = res.sets.reduce((n, s) => n + s.rows.length, 0)
+  status.value = res.hadErr
+    ? `Ошибка в строке ${res.errLine + 1} · ${res.ms} мс · БД: ${engine.getCurrent()}`
+    : `Готово · ${res.sets.length ? rows + ' стр. · ' : ''}${res.ms} мс · БД: ${engine.getCurrent()}`
   sync()
 }
 
+function setText(value) {
+  text.value = value
+  engine.setText(value)
+  errorLine.value = null
+}
+
 function loadLesson(id) {
-  const lesson = LESSONS.find(l => l.id === id)
-  if (!lesson) return
-
-  const sql = lesson.fromEngine ? engine.getSample() : lesson.sql
-  if (text.value.trim() && !confirm(`Заменить текущий текст примером «${lesson.title}»?`)) return
-
-  text.value = sql
-  engine.setText(sql)
-  nextTick(() => { if (editorEl.value) editorEl.value.scrollTop = 0 })
+  const ex = findExample(id)
+  if (!ex) return
+  // Спрашиваем, только если в редакторе свой текст, а не стартовый или другой пример
+  const own = text.value.trim() && text.value !== WELCOME && !ALL_EXAMPLES.some(e => e.sql === text.value)
+  if (own && !confirm(`Заменить текущий текст примером «${ex.title}»?`)) return
+  setText(ex.sql)
+  status.value = `Пример «${ex.title}» загружен — нажми Execute (F5)`
+  nextTick(() => editor.value && editor.value.scrollToTop())
 }
 
 function clearEditor() {
-  text.value = ''
-  engine.setText('')
-  if (editorEl.value) editorEl.value.focus()
+  setText('')
+  if (editor.value) editor.value.focus()
 }
 
 function resetAll() {
@@ -112,6 +129,7 @@ function resetAll() {
   results.value = []
   messages.value = [{ t: 'ok', m: 'Всё сброшено.' }]
   hadError.value = false
+  errorLine.value = null
   activeTab.value = 'messages'
   status.value = 'Сброс выполнен'
   sync()
@@ -134,43 +152,26 @@ function toggleKey(key) {
 }
 
 function insertAtCursor(s) {
-  const el = editorEl.value
-  if (!el) {
-    text.value += s
-    return
-  }
-  const a = el.selectionStart
-  const b = el.selectionEnd
-  el.setRangeText(s, a, b, 'end')
-  el.focus()
-  text.value = el.value
-  engine.setText(text.value)
+  if (editor.value) editor.value.insert(s)
+  else setText(text.value + s)
 }
 
 function insertSelect(table) {
-  insertAtCursor('SELECT * FROM ' + table + '\n')
+  insertAtCursor('SELECT TOP (1000) * FROM ' + table + ';\n')
+  sideOpen.value = false
 }
 
-function onKeydown(e) {
-  if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
-    e.preventDefault()
-    run()
-  } else if (e.key === 'Tab') {
-    e.preventDefault()
-    insertAtCursor('  ')
-  }
-}
-
-function onInput(value) {
-  text.value = value
-  engine.setText(value)
+function gotoLine(m) {
+  if (m.line === undefined || m.line === null || !editor.value) return
+  editor.value.gotoLine(m.line)
 }
 
 onMounted(async () => {
   try {
     const initSqlJs = await loadSqlJs()
     await engine.init(initSqlJs)
-    text.value = engine.getText()
+    const saved = engine.getText()
+    text.value = saved || WELCOME
     ready.value = true
     status.value = 'Готово · БД: ' + engine.getCurrent()
     sync()
@@ -217,26 +218,24 @@ onMounted(async () => {
       <main>
         <section class="editor-wrap">
           <SnippetBar :snippets="SNIPPETS" @insert="insertAtCursor" />
-          <textarea
-            id="editor"
-            ref="editorEl"
-            :value="text"
-            spellcheck="false"
-            autocapitalize="off"
-            autocomplete="off"
-            autocorrect="off"
-            placeholder="Пиши запросы здесь.&#10;Выдели часть текста — выполнится только выделенное.&#10;F5 или Ctrl+Enter — Execute."
-            @input="onInput($event.target.value)"
-            @keydown="onKeydown"
-          ></textarea>
+          <SqlEditor
+            ref="editor"
+            :model-value="text"
+            :error-line="errorLine"
+            placeholder="Пиши запросы здесь.&#10;Выдели часть текста — выполнится только выделенное.&#10;F5 или Ctrl+Enter — Execute, Ctrl+/ — закомментировать строки."
+            @update:model-value="setText"
+            @run="run"
+          />
         </section>
 
         <nav class="tabs">
-          <button class="tab" :class="{ active: activeTab === 'results' }" @click="activeTab = 'results'">Results</button>
-          <button class="tab" :class="{ active: activeTab === 'messages' }" @click="activeTab = 'messages'">
-            Messages<span v-if="hadError"> ⚠</span>
+          <button class="tab" :class="{ active: activeTab === 'results' }" @click="activeTab = 'results'">
+            Results<span v-if="results.length" class="tab-count">{{ results.length }}</span>
           </button>
-          <span id="status">{{ status }}</span>
+          <button class="tab" :class="{ active: activeTab === 'messages' }" @click="activeTab = 'messages'">
+            Messages<span v-if="hadError" class="tab-err"> ⚠</span>
+          </button>
+          <span id="status" :class="{ err: hadError }">{{ status }}</span>
         </nav>
 
         <section class="panel-out">
@@ -245,7 +244,18 @@ onMounted(async () => {
             <div v-else class="placeholder">Здесь появятся результаты запросов.</div>
           </div>
           <div v-show="activeTab === 'messages'">
-            <pre v-for="(m, i) in messages" :key="i" class="msg" :class="m.t">{{ m.m }}</pre>
+            <template v-for="(m, i) in messages" :key="i">
+              <pre
+                v-if="m.t === 'err'"
+                class="msg err clickable"
+                :title="'Перейти к строке ' + (m.line + 1)"
+                @click="gotoLine(m)"
+              >{{ m.m }}</pre>
+              <p v-else-if="m.t === 'hint'" class="msg hint">
+                <span class="hint-mark" aria-hidden="true">?</span>{{ m.m }}
+              </p>
+              <pre v-else class="msg" :class="m.t">{{ m.m }}</pre>
+            </template>
             <div v-if="!messages.length" class="placeholder">Сообщений нет.</div>
           </div>
         </section>

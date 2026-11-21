@@ -1,17 +1,14 @@
 /**
  * Klerr — движок T-SQL поверх SQLite (sql.js).
  *
- * ВАЖНО: блоки helpers / parsing / T-SQL→SQLite / validation / runStatement
- * перенесены из прежнего sql-trainer.html БЕЗ единой правки — только перемещены
- * внутрь фабрики createEngine(). Идентичность проверяется сверкой хэшей
- * (scripts/verify-engine.mjs).
- *
- * Из прежнего файла изменён только слой оркестровки: execute() больше не
- * пишет в DOM, а возвращает данные для Vue-компонентов.
+ * Здесь: хранение баз, разбор скрипта на пакеты/операторы, базовая трансляция
+ * T-SQL → SQLite и валидация с номерами ошибок SSMS. Всё, где SQL Server
+ * ведёт себя иначе, чем SQLite (схемы, ALTER COLUMN, ограничения, проверка
+ * типов, функции дат и т. п.), — в прослойке dialect.js.
  */
+import { createDialect, hintFor, isHiddenTable } from './dialect.js'
 
 const LS_DBS = 'tsqltr_dbs', LS_CUR = 'tsqltr_cur', LS_TXT = 'tsql_txt';
-export const MAX_ROWS = 1000;
 
 export function createEngine({ locateFile } = {}) {
   let SQL = null;
@@ -19,7 +16,6 @@ export function createEngine({ locateFile } = {}) {
   let current = 'master';
   const openKeys = new Set(['db:master']);
 
-  /* ==== БЛОК 1 — без изменений: helpers, парсинг, T-SQL→SQLite, валидация ==== */
 function TErr(num, msg) { const e = new Error(msg); e.num = num; return e; }
 function findDb(name) { return Object.keys(dbs).find(k => k.toLowerCase() === String(name).toLowerCase()) || null; }
 function db() { return dbs[current]; }
@@ -45,35 +41,10 @@ function restore() {
     }
     const c = localStorage.getItem(LS_CUR);
     if (c && dbs[c]) current = c;
-    const t = localStorage.getItem(LS_TXT);
-    if (t) editor.value = t;
   } catch (e) { dbs = {}; }
 }
 
 /* ===================== парсинг скрипта ===================== */
-function stripComments(s) {
-  let out = '', i = 0, q = false;
-  while (i < s.length) {
-    const c = s[i], n = s[i + 1];
-    if (q) { out += c; if (c === "'") { if (n === "'") { out += n; i += 2; continue; } q = false; } i++; continue; }
-    if (c === "'") { q = true; out += c; i++; continue; }
-    if (c === '-' && n === '-') { while (i < s.length && s[i] !== '\n') i++; continue; }
-    if (c === '/' && n === '*') { const e = s.indexOf('*/', i + 2); i = e < 0 ? s.length : e + 2; out += ' '; continue; }
-    out += c; i++;
-  }
-  return out;
-}
-
-function splitBatches(text) {
-  const batches = []; let cur = [];
-  for (const line of text.split(/\r?\n/)) {
-    if (/^\s*GO(?:\s+\d+)?\s*;?\s*$/i.test(line)) { batches.push(cur.join('\n')); cur = []; }
-    else cur.push(line);
-  }
-  batches.push(cur.join('\n'));
-  return batches.filter(b => b.trim());
-}
-
 const START = /^\s*(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|USE|SELECT|TRUNCATE|EXEC|EXECUTE|PRINT|DECLARE|SET|WITH)\b/i;
 
 function shouldSplit(cur, kw) {
@@ -83,8 +54,10 @@ function shouldSplit(cur, kw) {
     if (/(UNION(\s+ALL)?|INTERSECT|EXCEPT|\bAS)$/.test(u)) return false;
     return true;
   }
+  if (/^WITH\b/.test(u) && /\)$/.test(u)) return false;
   if (kw === 'SET') return !(/^UPDATE\b/.test(u) && !/\bSET\b/.test(u));
   if (kw === 'DROP') return !/^ALTER\b/.test(u);
+  if (kw === 'ALTER') return !/^ALTER\s+TABLE\s+\S+$/.test(u);
   return true;
 }
 
@@ -315,7 +288,6 @@ function makeCtx() {
   };
 }
 
-  /* ==== БЛОК 2 — без изменений: evalExpr, rowsMsg, runStatement ==== */
 function evalExpr(expr) {
   const st = db().prepare('SELECT ' + translate(expr));
   try { st.step(); const v = st.get()[0]; return v === null ? 'NULL' : String(v); } finally { st.free(); }
@@ -352,12 +324,8 @@ function runStatement(raw) {
   }
   if (/^SET\s+\w+(\s+\w+)?\s+(ON|OFF)\s*$/i.test(s)) return {};
   if ((m = s.match(/^PRINT\s+([\s\S]+)$/i))) return { msg: evalExpr(m[1]) };
-  if (/^(EXEC|EXECUTE|DECLARE)\b/i.test(s)) throw TErr(40000, 'EXEC and DECLARE are not supported in this trainer.');
-  if (/^ALTER\s+TABLE[\s\S]+\bALTER\s+COLUMN\b/i.test(s)) throw TErr(40000, 'ALTER COLUMN is not supported in this trainer. Use ADD or DROP COLUMN.');
-  if ((m = s.match(/^TRUNCATE\s+TABLE\s+(.+)$/i))) {
-    db().run('DELETE FROM ' + translate(m[1]));
-    return { msg: 'Commands completed successfully.' };
-  }
+  if (/^(EXEC|EXECUTE)\b/i.test(s)) throw TErr(40000, 'Only system procedures sp_rename, sp_help, sp_tables, sp_columns and sp_helpdb are supported in this trainer.');
+  if (/^DECLARE\b/i.test(s)) throw TErr(40000, 'Variables (DECLARE) are not supported in this trainer.');
 
   validateTsql(s, makeCtx());
   const sql = translate(s);
@@ -376,7 +344,6 @@ function runStatement(raw) {
   return { msg: 'Commands completed successfully.' };
 }
 
-  /* ==== БЛОК 3 — без изменений: listObjects, columns ==== */
 function listObjects(d) {
   try {
     const r = d.exec("SELECT name, type FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name");
@@ -390,127 +357,46 @@ function columns(d, t) {
   } catch (e) { return []; }
 }
 
-  /* ==== БЛОК 4 — без изменений: SAMPLE ==== */
-const SAMPLE = `-- Пример: первый урок
-CREATE DATABASE School
-GO
+  /* ===================== прослойка и выполнение ===================== */
 
-USE School
-GO
+  const dialect = createDialect({
+    db, TErr, translate, validateTsql, validateCreateTable, makeCtx, runStatement, splitStatements,
+    findDb, getDbs: () => Object.keys(dbs), getCurrent: () => current,
+  });
 
-CREATE TABLE Students (
-  Id INT IDENTITY(1,1) PRIMARY KEY,
-  FirstName NVARCHAR(50) NOT NULL,
-  LastName NVARCHAR(50) NOT NULL,
-  Age INT
-)
-GO
-
-INSERT INTO Students (FirstName, LastName, Age)
-VALUES (N'Ion', N'Rusu', 17),
-       (N'Maria', N'Popa', 16),
-       (N'Andrei', N'Ceban', 18)
-GO
-
-SELECT * FROM Students
-SELECT TOP 2 FirstName, LastName FROM Students ORDER BY Age DESC
-`;
-
-  /* ==== Адаптированный слой: DOM → данные (единственная переписанная часть) ==== */
-
-  /* Добавлено при переносе в Vue, строго после блоков движка (1–4).
-     SQLite не поддерживает ALTER TABLE … ADD CONSTRAINT, поэтому внешний ключ
-     добавляется пересборкой таблицы — так же, как это делает сам SQL Server.
-     Трансляция T-SQL, валидация и исполнение остались нетронутыми. */
-
-  const FK_ADD_RE = /^\s*ALTER\s+TABLE\s+(?:\[?[\w]+\]?\s*\.\s*)?(\[?[\w]+\]?)\s+ADD\s+(?:CONSTRAINT\s+(\[?[\w]+\]?)\s+)?FOREIGN\s+KEY\s*\(\s*([^)]*?)\s*\)\s+REFERENCES\s+(?:\[?[\w]+\]?\s*\.\s*)?(\[?[\w]+\]?)\s*\(\s*([^)]*?)\s*\)\s*$/i;
-
-  const ident = s => String(s).trim().replace(/^\[|\]$/g, '').replace(/^["`]|["`]$/g, '');
-  const quoteId = s => '"' + ident(s).replace(/"/g, '""') + '"';
-
-  function tableExists(d, name) {
-    const r = d.exec("SELECT 1 FROM sqlite_master WHERE type='table' AND lower(name)=lower('" + ident(name).replace(/'/g, "''") + "')");
-    return r.length > 0;
-  }
-
-  function addForeignKey(raw) {
-    const m = raw.match(FK_ADD_RE);
-    if (!m) return false;
-
-    const d = db();
-    const tbl = ident(m[1]);
-    const cname = m[2] ? ident(m[2]) : 'FK_' + tbl + '_' + ident(m[4]);
-    const fkCols = m[3].split(',').map(ident);
-    const refTbl = ident(m[4]);
-    const refCols = m[5].split(',').map(ident);
-
-    if (!tableExists(d, tbl)) throw TErr(3701, `Cannot update the object '${tbl}' because it does not exist.`);
-    if (!tableExists(d, refTbl)) throw TErr(1776, `Foreign key '${cname}' references table '${refTbl}' which does not exist.`);
-
-    const info = d.exec('PRAGMA table_info(' + quoteId(tbl) + ')');
-    if (!info.length) throw TErr(3701, `Cannot update the object '${tbl}' because it does not exist.`);
-    const cols = info[0].values.map(r => ident(r[1]));
-
-    for (const c of fkCols) {
-      if (!cols.some(x => x.toLowerCase() === c.toLowerCase())) {
-        throw TErr(1750, `Column '${c}' in table '${tbl}' is not a valid column or cannot be used in this context.`);
-      }
-    }
-
-    const row = d.exec("SELECT sql FROM sqlite_master WHERE type='table' AND lower(name)=lower('" + tbl.replace(/'/g, "''") + "')");
-    const createSql = String(row[0].values[0][0]);
-    const close = createSql.lastIndexOf(')');
-    const fk = ', FOREIGN KEY (' + fkCols.map(quoteId).join(', ') + ') REFERENCES ' + quoteId(refTbl) + ' (' + refCols.map(quoteId).join(', ') + ')';
-    const withFk = createSql.slice(0, close) + fk + createSql.slice(close);
-
-    const tmp = '__fk_' + tbl;
-    const tmpSql = withFk.replace(
-      /^(CREATE\s+TABLE\s+)(?:IF\s+NOT\s+EXISTS\s+)?("[^"]+"|\[[^\]]+\]|`[^`]+`|\w+)/i,
-      '$1' + quoteId(tmp),
-    );
-    const colList = cols.map(quoteId).join(', ');
-
-    d.run('PRAGMA foreign_keys=OFF');
-    try {
-      d.run(tmpSql);
-      d.run('INSERT INTO ' + quoteId(tmp) + ' (' + colList + ') SELECT ' + colList + ' FROM ' + quoteId(tbl));
-      d.run('DROP TABLE ' + quoteId(tbl));
-      d.run('PRAGMA legacy_alter_table=ON');
-      try {
-        d.run('ALTER TABLE ' + quoteId(tmp) + ' RENAME TO ' + quoteId(tbl));
-      } finally {
-        d.run('PRAGMA legacy_alter_table=OFF');
-      }
-    } finally {
-      d.run('PRAGMA foreign_keys=ON');
-    }
-    return true;
-  }
+  /** «Msg 208, Level 16, State 1» → «Msg 208, Level 16, State 1, Line 7» */
+  const withLine = (text, line) => text.replace(/^(Msg \d+, Level \d+, State \d+)/, `$1, Line ${line + 1}`);
 
   function execute(text, opts) {
     if (!SQL) return { sets: [], log: [], hadErr: false, ms: 0 };
     if (!text || !text.trim()) return { sets: [], log: [], hadErr: false, ms: 0, empty: true };
 
+    const lineOffset = (opts && opts.lineOffset) || 0;
     const usedSel = !!(opts && opts.selectionOnly);
     const t0 = performance.now();
     const sets = [], log = [];
-    let hadErr = false;
+    let hadErr = false, errLine = null;
 
     if (usedSel) log.push({ t: 'dim', m: '-- Выполнено только выделенное --' });
 
-    for (const batch of splitBatches(stripComments(text))) {
-      for (const stmt of splitStatements(batch)) {
-        try {
-          const raw = stmt.trim().replace(/;+\s*$/, '').trim();
-          const r = addForeignKey(raw)
-            ? { msg: 'Commands completed successfully.', changedUI: true }
-            : runStatement(stmt);
-          if (r.set) sets.push(r.set);
-          if (r.msg) log.push({ t: 'ok', m: r.msg });
-        } catch (e) {
-          log.push({ t: 'err', m: fmtErr(e) });
-          hadErr = true;
-          break; // как в SSMS: ошибка прерывает текущий пакет, следующий (посде GO) продолжится
+    for (const batch of dialect.batches(text)) {
+      for (let rep = 0; rep < batch.repeat; rep++) {
+        for (const stmt of dialect.statements(batch)) {
+          try {
+            for (const r of dialect.run(stmt.text)) {
+              if (r.set) sets.push(r.set);
+              if (r.msg) log.push({ t: 'ok', m: r.msg });
+            }
+          } catch (e) {
+            const line = stmt.line + lineOffset;
+            log.push({ t: 'err', m: withLine(fmtErr(e), line), line });
+            const hint = hintFor(fmtErr(e), stmt.text, current);
+            if (hint) log.push({ t: 'hint', m: hint, line });
+            if (errLine === null) errLine = line;
+            hadErr = true;
+            rep = batch.repeat; // как в SSMS: ошибка прерывает текущий пакет, следующий (после GO) продолжится
+            break;
+          }
         }
       }
     }
@@ -519,7 +405,7 @@ SELECT TOP 2 FirstName, LastName FROM Students ORDER BY Age DESC
     log.push({ t: 'dim', m: `Completion time: ${new Date().toLocaleTimeString()}` });
 
     save();
-    return { sets, log, hadErr, ms };
+    return { sets, log, hadErr, ms, errLine };
   }
 
   async function init(initSqlJs) {
@@ -544,9 +430,12 @@ SELECT TOP 2 FirstName, LastName FROM Students ORDER BY Age DESC
     return true;
   }
 
-  const getTables = (dbName) => listObjects(dbs[dbName] || db());
-  const getColumns = (dbName, table) => columns(dbs[dbName] || db(), table);
-  const getSample = () => SAMPLE;
+  const getTables = (dbName) => listObjects(dbs[dbName] || db()).filter(o => !isHiddenTable(o.name));
+  function getColumns(dbName, table) {
+    const prev = current;
+    if (dbs[dbName]) current = dbName;
+    try { return dialect.describe(table); } finally { current = prev; }
+  }
   const getOpenKeys = () => openKeys;
   const saveNow = () => save();
   const setText = (t) => { try { localStorage.setItem(LS_TXT, t); } catch (e) { /* хранилище недоступно */ } };
@@ -562,6 +451,7 @@ SELECT TOP 2 FirstName, LastName FROM Students ORDER BY Age DESC
     current = 'master';
     openKeys.clear();
     openKeys.add('db:master');
+    dialect.reset();
     save();
   }
 
@@ -569,7 +459,7 @@ SELECT TOP 2 FirstName, LastName FROM Students ORDER BY Age DESC
     init, execute, isReady,
     getDbs, getCurrent, setCurrent,
     getTables, getColumns,
-    getSample, getOpenKeys, toggleKey,
+    getOpenKeys, toggleKey,
     resetAll, saveNow, setText, getText,
   };
 }
