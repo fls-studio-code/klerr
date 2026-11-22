@@ -6,6 +6,12 @@ const props = defineProps({
   modelValue: { type: String, default: '' },
   errorLine: { type: Number, default: null },
   placeholder: { type: String, default: '' },
+  // Подсветка и поведение редактора подменяются для другого языка (мини-Python в лаборатории)
+  highlighter: { type: Function, default: highlight },
+  comment: { type: String, default: '--' },
+  indent: { type: String, default: '  ' },
+  blockColon: { type: Boolean, default: false },
+  ariaLabel: { type: String, default: 'Редактор SQL' },
 })
 
 const emit = defineEmits(['update:modelValue', 'run'])
@@ -16,7 +22,7 @@ const gutter = ref(null)
 const lineH = ref(22.5)
 const padTop = ref(12)
 
-const html = computed(() => highlight(props.modelValue, props.errorLine))
+const html = computed(() => props.highlighter(props.modelValue, props.errorLine))
 const lineCount = computed(() => props.modelValue.split('\n').length)
 const numbers = computed(() => Array.from({ length: lineCount.value }, (_, i) => i + 1))
 
@@ -69,11 +75,16 @@ function editLines(fn) {
   el.setSelectionRange(a, a + next.length)
 }
 
+const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 function toggleComment() {
+  const c = escapeRe(props.comment)
+  const uncomment = new RegExp('^(\\s*)' + c + ' ?')
+  const commented = new RegExp('^\\s*' + c)
   editLines(lines => {
     const filled = lines.filter(l => l.trim())
-    const all = filled.length && filled.every(l => /^\s*--/.test(l))
-    return lines.map(l => (all ? l.replace(/^(\s*)-- ?/, '$1') : l.trim() ? l.replace(/^(\s*)/, '$1-- ') : l))
+    const all = filled.length && filled.every(l => commented.test(l))
+    return lines.map(l => (all ? l.replace(uncomment, '$1') : l.trim() ? l.replace(/^(\s*)/, '$1' + props.comment + ' ') : l))
   })
 }
 
@@ -89,13 +100,17 @@ function onKeydown(e) {
   } else if (e.key === 'Tab') {
     e.preventDefault()
     const multi = el.value.slice(el.selectionStart, el.selectionEnd).includes('\n')
-    if (e.shiftKey) editLines(lines => lines.map(l => l.replace(/^( {1,2}|\t)/, '')))
-    else if (multi) editLines(lines => lines.map(l => '  ' + l))
-    else insert('  ')
+    const unindent = new RegExp('^( {1,' + props.indent.length + '}|\\t)')
+    if (e.shiftKey) editLines(lines => lines.map(l => l.replace(unindent, '')))
+    else if (multi) editLines(lines => lines.map(l => props.indent + l))
+    else insert(props.indent)
   } else if (e.key === 'Enter' && !mod && !e.shiftKey && !e.altKey && !e.isComposing) {
     const v = el.value
     const ls = v.lastIndexOf('\n', el.selectionStart - 1) + 1
-    const indent = (v.slice(ls, el.selectionStart).match(/^[ \t]*/) || [''])[0]
+    const before = v.slice(ls, el.selectionStart)
+    let indent = (before.match(/^[ \t]*/) || [''])[0]
+    // Python: после строки, оканчивающейся на «:», следующий блок сдвигается
+    if (props.blockColon && /:\s*(#.*)?$/.test(before) && el.selectionStart === el.selectionEnd) indent += props.indent
     if (indent) { e.preventDefault(); insert('\n' + indent) }
   }
 }
@@ -158,7 +173,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', measure))
         autocorrect="off"
         wrap="off"
         :placeholder="placeholder"
-        aria-label="Редактор SQL"
+        :aria-label="ariaLabel"
         @input="emitValue"
         @scroll="onScroll"
         @keydown="onKeydown"

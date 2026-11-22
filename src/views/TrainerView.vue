@@ -9,6 +9,7 @@ import ObjectExplorer from '../components/ObjectExplorer.vue'
 import SnippetBar from '../components/SnippetBar.vue'
 import ResultsTable from '../components/ResultsTable.vue'
 import SqlEditor from '../components/SqlEditor.vue'
+import { useSplit } from '../composables/useSplit.js'
 
 const SNIPPETS = [
   { label: 'SELECT', insert: 'SELECT * FROM ' },
@@ -63,45 +64,7 @@ const tick = ref(0)
 const mainEl = ref(null)
 
 /* ---------- разделитель редактора и результатов ---------- */
-const LS_SPLIT = 'klerr_split'
-const split = ref(readSplit())
-const dragging = ref(false)
-
-function readSplit() {
-  try { const v = parseFloat(localStorage.getItem(LS_SPLIT)); return v > 0 && v < 1 ? v : null } catch (e) { return null }
-}
-function saveSplit() {
-  try { if (split.value === null) localStorage.removeItem(LS_SPLIT); else localStorage.setItem(LS_SPLIT, String(split.value)) } catch (e) { /* хранилище недоступно */ }
-}
-function setSplitFromY(y) {
-  const m = mainEl.value
-  if (!m) return
-  const r = m.getBoundingClientRect()
-  const min = 90, max = r.height - 110
-  split.value = Math.min(max, Math.max(min, y - r.top)) / r.height
-}
-function startSplit(e) {
-  if (e.button !== undefined && e.button !== 0) return
-  e.preventDefault()
-  dragging.value = true
-  e.currentTarget.setPointerCapture(e.pointerId)
-}
-function moveSplit(e) { if (dragging.value) setSplitFromY(e.clientY) }
-function endSplit() {
-  if (!dragging.value) return
-  dragging.value = false
-  saveSplit()
-}
-function keySplit(e) {
-  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
-  e.preventDefault()
-  const m = mainEl.value
-  const r = m.getBoundingClientRect()
-  const cur = (split.value ?? 0.4) * r.height + r.top
-  setSplitFromY(cur + (e.key === 'ArrowUp' ? -24 : 24))
-  saveSplit()
-}
-function resetSplit() { split.value = null; saveSplit() }
+const { split, dragging, start: startSplit, move: moveSplit, end: endSplit, key: keySplit, reset: resetSplit } = useSplit('klerr_split', mainEl)
 
 function sync() {
   tick.value++

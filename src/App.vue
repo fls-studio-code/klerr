@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 function applyBodyClass(name) {
-  document.body.classList.toggle('is-trainer', name === 'trainer')
+  document.body.classList.toggle('is-trainer', name === 'trainer' || name === 'lab')
 }
 
 watch(() => route.name, applyBodyClass, { immediate: true })
