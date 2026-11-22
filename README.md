@@ -1,6 +1,6 @@
 # Klerr
 
-Сайт домена [klerr.dev](https://klerr.dev) — лендинг и тренажёр T-SQL-запросов.
+Сайт домена [klerr.dev](https://klerr.dev) — лендинг, тренажёр T-SQL-запросов и лаборатория Transformers.
 
 Собран на **Vue 3 + Vite**, деплоится через **GitHub Actions** на **GitHub Pages**.
 
@@ -8,6 +8,7 @@
 |---|---|
 | `/` | Лендинг: логотип, кнопка SQL-Trainer, блок Roblox-игр |
 | `/sql-trainer` | Тренажёр: редактор с подсветкой, Object Explorer, примеры к урокам 1–4, синтаксис SQL Server поверх SQLite |
+| `/transformers-lab` | Лаборатория к уроку 11 курса Data Science: интерпретатор мини-Python, демо-модели и настоящие модели в браузере |
 | `/sql-trainer.html` | Старый адрес — редиректится на `/sql-trainer` |
 
 ---
@@ -41,14 +42,14 @@ npm install
 npm run dev            # локальный сервер разработки (Vite)
 npm run build          # prepare-public → vite build → postbuild
 npm run preview        # предпросмотр собранного dist/ на :4173
-npm test               # прогон всех примеров уроков через движок
+npm test               # примеры SQL-уроков через движок + интерпретатор и примеры лаборатории
 ```
 
 `npm run build` делает три вещи:
 
 1. `scripts/prepare-public.mjs` — копирует движок **sql.js** (`sql-wasm.js` + `sql-wasm.wasm`) в `public/vendor/sql`, чтобы тренажёр работал **без CDN**, и копирует `CNAME` в `public/CNAME` (Pages читает домен из корня сайта, а публикуется `dist/`).
 2. `vite build` — собирает приложение в `dist/`.
-3. `scripts/postbuild.mjs` — кладёт `dist/index.html` в `dist/404.html` (SPA-фолбэк для чистых URL) и в `dist/sql-trainer/index.html` (чтобы `/sql-trainer` отдавался со статусом 200, а не через 404).
+3. `scripts/postbuild.mjs` — кладёт `dist/index.html` в `dist/404.html` (SPA-фолбэк для чистых URL) и в `dist/sql-trainer/index.html`, `dist/transformers-lab/index.html` (чтобы эти адреса отдавались со статусом 200, а не через 404).
 
 ## Деплой
 
@@ -73,10 +74,14 @@ src/
   engine/sqljs.js      локальная загрузка sql.js
   editor/highlight.js  подсветка T-SQL в редакторе
   lessons.js           примеры к урокам 1–4 для меню «Примеры»
-  views/               LandingView.vue, TrainerView.vue
-  components/          SqlEditor, ObjectExplorer, LessonMenu, ResultsTable, SnippetBar, TrainerToolbar, …
-  styles/              base.css, landing.css, trainer.css
-scripts/               prepare-public, postbuild, test-lessons
+  engine/pylite/       интерпретатор мини-Python (лексер, парсер, вычислитель, встроенные функции)
+  engine/ml/           модели лаборатории: демо (demo.js), каталог (catalog.js), мост к Transformers.js (real.js + real.worker.js)
+  lab/examples.js      примеры к уроку 11 для меню «Примеры» лаборатории
+  views/               LandingView.vue, TrainerView.vue, LabView.vue
+  components/          SqlEditor (общий редактор), ObjectExplorer, LessonMenu, ResultsTable, SnippetBar, TrainerToolbar, ModelPanel, LabHelp, …
+  composables/         useSplit.js: разделитель редактора и результатов
+  styles/              base.css, landing.css, trainer.css, lab.css
+scripts/               prepare-public, postbuild, test-lessons, test-lab
 ```
 
 ### Прослойка SQL Server → SQLite
@@ -91,3 +96,25 @@ scripts/               prepare-public, postbuild, test-lessons
 - сообщения об ошибках с номерами SQL Server, номером строки и подсказкой на русском (например, `LIMIT` → «используй TOP»).
 
 `npm test` выполняет каждый пример из `lessons.js` дважды и сверяет номера ошибок с теми, что пример показывает намеренно.
+
+## Лаборатория Transformers (`/transformers-lab`)
+
+Страница к уроку 11 курса Data Science. Студент пишет код на **мини-Python** (как в `CODE.txt` урока: `pipeline`, `set_seed`, `AutoTokenizer`), нажимает Run и получает вывод, ошибки в стиле Traceback с подсказками на русском и подсветкой строки.
+
+**Интерпретатор** (`src/engine/pylite/`) написан на JS без зависимостей и работает в браузере. Поддержаны переменные, списки, словари, кортежи, f-строки, `if/for/while`, `def/lambda`, генераторы списков, `try/except`, `import` модулей `transformers`, `math`, `random`, `json`, `time`. Не поддержаны классы, `with`, `yield`, множества, файлы, `input()` и сторонние библиотеки. Число `2.0` печатается как `2` (JS не различает int и float).
+
+**Два режима моделей** (переключатель в тулбаре):
+
+| Режим | Что запускается | Сеть |
+|---|---|---|
+| Демо | игрушечные аналоги: словарь оценок слов, цепь Маркова, выбор предложений, приближённая токенизация | не нужна |
+| Реальные модели | DistilBERT, GPT‑2, DistilBART, OPUS‑MT через [Transformers.js](https://github.com/huggingface/transformers.js) в Web Worker | huggingface.co и cdn.jsdelivr.net при первой загрузке |
+
+Скачанные модели хранятся в кэше браузера (Cache Storage `transformers-cache`). Панель «Модели» показывает, что уже скачано, умеет скачать заранее и удалить из кэша. Python-имена из кода сопоставляются с ONNX-версиями (`gpt2` → `Xenova/gpt2`, `facebook/bart-large-cnn` → уменьшенная `Xenova/distilbart-cnn-6-6`), см. `src/engine/ml/catalog.js`.
+
+Заметки по сборке:
+
+- Transformers.js загружается лениво (отдельный чанк и воркер), лендинг и SQL-тренажёр его не тянут.
+- ONNX Runtime ссылается на свой 27 МБ `.wasm`. `vite.config.js` убирает его из сборки: движок берётся с jsDelivr, как и по умолчанию в Transformers.js.
+- В Transformers.js 4 для GPT‑подобных моделей ищется файл `model_quantized.onnx`, а в `Xenova/gpt2` он лежит как `decoder_model_merged_quantized.onnx`. Поэтому для GPT‑2 в каталоге задан `loadOptions.model_file_name`.
+- Размеры моделей в каталоге: DistilBERT ≈ 69 МБ, GPT‑2 ≈ 130 МБ, DistilBART ≈ 285 МБ, OPUS‑MT ≈ 108 МБ.

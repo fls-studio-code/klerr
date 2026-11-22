@@ -66,6 +66,25 @@ const games = [
             </RouterLink>
             <span class="path">→ <b>/sql-trainer</b></span>
 
+            <RouterLink class="cta cta--ghost" to="/transformers-lab">
+              <span class="cta-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
+                  <circle cx="12" cy="12" r="3.2" />
+                </svg>
+              </span>
+              <span class="cta-text">
+                <span class="cta-title">Transformers Lab</span>
+                <span class="cta-sub">запустить модель в браузере</span>
+              </span>
+              <span class="cta-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </span>
+            </RouterLink>
+
             <a class="cta cta--ghost" href="https://learn.microsoft.com/en-us/sql/samples/adventureworks-install-configure?view=sql-server-ver17&amp;tabs=ssms" target="_blank" rel="noopener noreferrer">
               <span class="cta-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
