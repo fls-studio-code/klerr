@@ -97,7 +97,7 @@ main.resizing{cursor:row-resize;user-select:none}
 .snips button{flex:0 0 auto;min-height:32px;padding:4px 10px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 /* ---------- редактор: textarea поверх подсвеченного <pre> ---------- */
 .ed{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);background:var(--bg);
-  --ed-font:15px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  --ed-font:15px/22px "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .ed-gutter{overflow:hidden;padding:12px 0;min-width:44px;background:var(--panel);border-right:1px solid var(--line);color:#5b6372;font:var(--ed-font);text-align:right;user-select:none}
 .ed-ln{padding:0 10px 0 12px;font-variant-numeric:tabular-nums}
 .ed-ln.err{color:#fff;background:rgba(255,107,107,.35)}
@@ -165,7 +165,7 @@ tr:nth-child(even) td:not(.rn){background:rgba(255,255,255,.02)}
   aside{position:fixed;z-index:30;top:0;bottom:0;left:0;width:84%;max-width:330px;transform:translateX(-102%);transition:transform .22s ease;padding-top:env(safe-area-inset-top);box-shadow:6px 0 24px rgba(0,0,0,.5)}
   aside.open{transform:none}
   #backdrop.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
-  .ed{--ed-font:16px/1.5 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .ed{--ed-font:16px/24px "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
   .ed-gutter{min-width:34px}
   .ed-ln{padding:0 6px 0 8px}
   select{max-width:38vw}
